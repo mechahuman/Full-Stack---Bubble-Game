@@ -1,0 +1,342 @@
+DETAILED CODE EXPLANATION
+=======================
+
+1. BACKEND (app.py)
+------------------
+
+# Import necessary libraries
+from flask import Flask, request, jsonify  # Flask is our web server, request gets data from frontend, jsonify sends data back
+from flask_cors import CORS  # Allows frontend to talk to backend
+from pymongo import MongoClient  # Connects to MongoDB database
+import os  # For file operations
+
+# Create Flask app and allow cross-origin requests
+app = Flask(__name__)
+CORS(app)
+
+# Connect to MongoDB
+client = MongoClient('mongodb://localhost:27017/')  # Connect to MongoDB running on your computer
+db = client['bubblegame']  # Use database named 'bubblegame'
+players_collection = db['players']  # Use collection named 'players'
+
+# Function to register a new player
+@app.route('/api/register/', methods=['POST'])
+def register_player():
+    data = request.get_json()  # Get data sent from frontend
+    username = data.get('username')  # Get username from data
+    
+    # Check if username was provided
+    if not username:
+        return jsonify({
+            'status': 'error',
+            'message': 'Username is required'
+        }), 400
+    
+    # Check if player already exists
+    existing_player = players_collection.find_one({'username': username})
+    if existing_player:
+        is_new = False  # Player already exists
+    else:
+        # Create new player with score 0
+        players_collection.insert_one({
+            'username': username,
+            'highscore': 0
+        })
+        is_new = True  # New player created
+    
+    # Get player data to send back
+    player = players_collection.find_one({'username': username})
+    return jsonify({
+        'status': 'success',
+        'player': {
+            'username': player['username'],
+            'highscore': player['highscore'],
+            'is_new': is_new
+        }
+    })
+
+# Function to update player's high score
+@app.route('/api/update-highscore/', methods=['POST'])
+def update_highscore():
+    data = request.get_json()  # Get data from frontend
+    username = data.get('username')  # Get username
+    score = data.get('score')  # Get new score
+    
+    # Check if both username and score were provided
+    if not username or score is None:
+        return jsonify({
+            'status': 'error',
+            'message': 'Username and score are required'
+        }), 400
+    
+    # Find player in database
+    player = players_collection.find_one({'username': username})
+    if not player:
+        return jsonify({
+            'status': 'error',
+            'message': 'Player not found'
+        }), 404
+    
+    # Update high score if new score is higher
+    if score > player['highscore']:
+        players_collection.update_one(
+            {'username': username},
+            {'$set': {'highscore': score}}
+        )
+        player['highscore'] = score
+    
+    # Send updated player data back
+    return jsonify({
+        'status': 'success',
+        'player': {
+            'username': player['username'],
+            'highscore': player['highscore']
+        }
+    })
+
+# Function to get a specific player's data
+@app.route('/api/player/<username>/', methods=['GET'])
+def get_player(username):
+    # Find player in database
+    player = players_collection.find_one({'username': username})
+    if not player:
+        return jsonify({
+            'status': 'error',
+            'message': 'Player not found'
+        }), 404
+    
+    # Send player data back
+    return jsonify({
+        'status': 'success',
+        'player': {
+            'username': player['username'],
+            'highscore': player['highscore']
+        }
+    })
+
+# Function to get all players' data
+@app.route('/api/all/', methods=['GET'])
+def get_all_players():
+    # Get all players, sorted by high score (highest first)
+    players = list(players_collection.find().sort('highscore', -1))
+    return jsonify({
+        'status': 'success',
+        'players': [
+            {
+                'username': player['username'],
+                'highscore': player['highscore']
+            }
+            for player in players
+        ]
+    })
+
+# Start the server
+if __name__ == '__main__':
+    app.run(debug=True, port=8000)  # Run on port 8000
+
+    
+
+2. FRONTEND (script.js)
+---------------------
+
+# Game variables
+let score = 0;  // Current score
+let timeLeft = 60;  // Time remaining (60 seconds)
+let gameInterval;  // Timer interval
+let bubbleInterval;  // Bubble creation interval
+let isGameRunning = false;  // Game state
+let highScore = 0;  // Player's high score
+let currentUsername = null;  // Current player's username
+
+# Get HTML elements
+const gameArea = document.getElementById('game-area');  // Where bubbles appear
+const scoreDisplay = document.getElementById('score');  // Score display
+const timerDisplay = document.getElementById('timer');  // Timer display
+const startButton = document.getElementById('start-button');  // Start button
+const newUserButton = document.getElementById('new-user-button');  // New user button
+const highScoreDisplay = document.getElementById('high-score');  // High score display
+const usernameDisplay = document.getElementById('username');  // Username display
+
+# Bubble colors array
+const bubbleColors = [
+    '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEEAD',
+    '#D4A5A5', '#9B59B6', '#E67E22', '#2ECC71', '#F1C40F'
+];
+
+# Function to register a new user
+async function registerNewUser() {
+    const username = prompt('Enter your username:');  // Ask for username
+    if (!username) return;  // If no username, stop
+
+    try {
+        # Send username to backend
+        const response = await fetch('http://localhost:8000/api/register/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username: username })
+        });
+
+        # Handle response
+        const data = await response.json();
+        if (data.status === 'success') {
+            currentUsername = username;  // Save username
+            usernameDisplay.textContent = username;  // Show username
+            highScore = data.player.highscore;  // Get high score
+            highScoreDisplay.textContent = highScore;  // Show high score
+            
+            # Enable start button
+            startButton.disabled = false;
+            startButton.textContent = 'Start Game';
+            
+            # Reset game state
+            score = 0;
+            scoreDisplay.textContent = score;
+            timeLeft = 60;
+            timerDisplay.textContent = timeLeft;
+        }
+    } catch (error) {
+        console.error('Error registering user:', error);
+        alert('Error registering user. Please try again.');
+    }
+}
+
+# Function to update high score
+async function updateHighScore() {
+    if (!currentUsername) return;  // If no username, stop
+
+    try {
+        # Send score to backend
+        const response = await fetch('http://localhost:8000/api/update-highscore/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                username: currentUsername,
+                score: score
+            })
+        });
+
+        # Handle response
+        const data = await response.json();
+        if (data.status === 'success') {
+            highScore = data.player.highscore;
+            highScoreDisplay.textContent = highScore;
+        }
+    } catch (error) {
+        console.error('Error updating high score:', error);
+    }
+}
+
+# Function to create a bubble
+function createBubble() {
+    # Create bubble element
+    const bubble = document.createElement('div');
+    const size = 30 + Math.random() * 30;  # Random size between 30 and 60
+    bubble.style.width = `${size}px`;
+    bubble.style.height = `${size}px`;
+    bubble.style.backgroundColor = bubbleColors[Math.floor(Math.random() * bubbleColors.length)];
+    bubble.style.borderRadius = '50%';
+    bubble.style.position = 'absolute';
+    bubble.style.left = Math.random() * (gameArea.offsetWidth - size) + 'px';
+    bubble.style.top = gameArea.offsetHeight + 'px';
+    bubble.style.boxShadow = '0 0 10px rgba(255, 255, 255, 0.5)';
+    bubble.style.transition = 'transform 0.1s ease';
+    gameArea.appendChild(bubble);
+
+    # Bubble movement
+    let speed = 2 + Math.random() * 2;  # Random speed
+    let position = gameArea.offsetHeight;
+
+    # Function to move bubble
+    function moveBubble() {
+        position -= speed;  # Move bubble up
+        bubble.style.top = position + 'px';
+
+        if (position < -size) {  # If bubble is off screen
+            bubble.remove();  # Remove bubble
+        }
+    }
+
+    # Handle bubble click
+    bubble.addEventListener('click', () => {
+        bubble.remove();  # Remove bubble
+        score += 1;  # Increase score
+        scoreDisplay.textContent = score;  # Update score display
+    });
+
+    # Start moving bubble
+    const moveInterval = setInterval(moveBubble, 16);
+    bubble.dataset.interval = moveInterval;
+}
+
+# Function to start game
+function startGame() {
+    if (!currentUsername) {  # If no username
+        alert('Please register a username first!');
+        return;
+    }
+
+    if (isGameRunning) return;  # If game already running
+
+    # Set up game
+    isGameRunning = true;
+    score = 0;
+    scoreDisplay.textContent = score;
+    timeLeft = 60;
+    timerDisplay.textContent = timeLeft;
+    startButton.textContent = 'Game in Progress';
+    startButton.disabled = true;
+    newUserButton.disabled = true;
+
+    # Start game timers
+    gameInterval = setInterval(updateTimer, 1000);  # Update timer every second
+    bubbleInterval = setInterval(createBubble, 1000);  # Create bubble every second
+}
+
+# Function to update timer
+function updateTimer() {
+    timeLeft--;  # Decrease time
+    timerDisplay.textContent = timeLeft;  # Update timer display
+
+    if (timeLeft <= 0) {  # If time's up
+        endGame();  # End game
+    }
+}
+
+# Function to end game
+async function endGame() {
+    clearInterval(gameInterval);  # Stop timer
+    clearInterval(bubbleInterval);  # Stop creating bubbles
+    isGameRunning = false;
+
+    # Remove all bubbles
+    const bubbles = gameArea.getElementsByTagName('div');
+    while (bubbles.length > 0) {
+        bubbles[0].remove();
+    }
+
+    # Update high score
+    await updateHighScore();
+
+    # Reset game state
+    startButton.textContent = 'Play Again';
+    startButton.disabled = false;
+    newUserButton.disabled = false;
+}
+
+# Add button click handlers
+startButton.addEventListener('click', () => {
+    if (isGameRunning) return;
+    startGame();
+});
+
+newUserButton.addEventListener('click', () => {
+    if (isGameRunning) {
+        alert('Please wait for the current game to end!');
+        return;
+    }
+    registerNewUser();
+}); 
