@@ -89,39 +89,40 @@ Upon launching the game, users register with a unique username. Bubbles rise fro
 
 ---
 
-## Future Enhancements
+## How to Run the Game
 
-### Visual and UX Improvements
-- Add popping effects and sound design.
-- Responsive themes and mobile-first design.
 
-### Gameplay Additions
-- Special bubbles, power-ups, and difficulty levels.
-- Daily challenges and timed modes.
+1. Make sure MongoDB is installed and running on your computer
+2. Open two terminal windows
+3. In first terminal:
+   - Go to backend folder: cd backend
+   - Run: python app.py
+4. In second terminal:
+   - Go to frontend/public folder: cd frontend/public
+   - Run: python -m http.server 8080
+5. Open your web browser
+6. Go to: http://localhost:8080
 
-### Social Integration
-- Friend system and real-time online indicators.
-- Chat and score sharing via social media.
 
-### Performance Optimization
-- Smoother bubble transitions.
-- Faster load times and improved backend concurrency.
-
-### Learning and Feedback Tools
-- In-game tutorial and tips.
-- Player statistics and progress tracking.
 
 ---
 
-## Target Audience
+## Snapshots
 
-The Bubble Pop Game caters to a wide range of users including:
-- Casual gamers
-- Competitive individuals
-- Mobile users seeking short bursts of entertainment
-- Reflex training enthusiasts
+<img src="https://github.com/user-attachments/assets/90222201-23e0-4175-9b31-8358d237d337" width="600" alt="Screenshot description">
 
----
+
+<img src="https://github.com/user-attachments/assets/c89fb831-76b1-4d43-83c1-24e2422533f0" width="600" alt="Screenshot description">
+
+
+<img src="https://github.com/user-attachments/assets/f8f17b7a-7f11-4d7e-a06f-02e633c761cd" width="600" alt="Screenshot description">
+
+
+<img src="https://github.com/user-attachments/assets/812b7644-83d5-4206-90fc-fd75fc0a1c43" width="600" alt="Screenshot description">
+
+
+<img src="https://github.com/user-attachments/assets/0a4cc4f0-32e7-45c4-aa47-177e2d8f9fba" width="600" alt="Screenshot description">
+
 
 ## Conclusion
 
