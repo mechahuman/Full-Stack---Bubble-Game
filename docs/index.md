@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-The **Bubble Pop Game** is a dynamic and engaging web-based game designed to entertain players with simple yet addictive gameplay. The objective is straightforward: players pop colorful bubbles to accumulate points within a 60-second time frame. Built with a modern tech stack and a clean interface, the game ensures a responsive, enjoyable experience across devices.
+This [project](https://github.com/mechahuman/Full-Stack---Bubble-Game) is a dynamic and engaging web-based game designed to entertain players with simple yet addictive gameplay. The objective is straightforward: players pop colorful bubbles to accumulate points within a 60-second time frame. Built with a modern tech stack and a clean interface, the game ensures a responsive, enjoyable experience across devices.
 
 ---
 
